@@ -22,8 +22,12 @@ on:
       openwrt_kernel:
         description: "Версия ядра"
         required: true
-        default: "6.1.75"
-        type: string
+        default: "6.1.y"
+        type: choice
+        options:
+          - 6.1.y
+          - 6.6.y
+          - 5.10.y
       luci_version:
         description: "Версия iStoreOS"
         required: true
@@ -63,7 +67,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🛠️ Подготовка окружения
+      - name: 🛠️ Подготовка системы
         run: |
           sudo timedatectl set-timezone "Asia/Shanghai"
           sudo modprobe loop || true
@@ -71,36 +75,35 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             dosfstools gzip jq libconfuse-dev libfaketime libfuse-dev libncurses-dev \
-            pigz pv u-boot-tools uuid-runtime zstd fdisk btrfs-progs e2fsprogs parted curl git bc wget subversion
+            pigz pv u-boot-tools uuid-runtime zstd fdisk btrfs-progs e2fsprogs parted curl git bc wget tar
 
       - name: ⬇️ Скачивание rootfs
         id: get_rootfs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p openwrt/openwrt-armvirt
-          gh release download --repo "${{ github.repository }}" --pattern "*rootfs*.tar.gz" --dir openwrt/openwrt-armvirt --clobber
+          mkdir -p openwrt-armvirt
+          gh release download --repo "${{ github.repository }}" --pattern "*rootfs*.tar.gz" --dir openwrt-armvirt --clobber
           
-          FOUND_FILE=$(find openwrt/openwrt-armvirt -type f -name "*rootfs*.tar.gz" | head -n 1)
+          FOUND_FILE=$(find openwrt-armvirt -type f -name "*rootfs*.tar.gz" | head -n 1)
           if [ -z "$FOUND_FILE" ]; then
             echo "❌ Rootfs архив не найден в релизах!"
             exit 1
           fi
           
-          echo "Используется rootfs: $FOUND_FILE"
-          echo "file=$FOUND_FILE" >> $GITHUB_OUTPUT
+          echo "Используется: $FOUND_FILE"
+          cp -f "$FOUND_FILE" openwrt-armvirt/openwrt-armvirt-64-default-rootfs.tar.gz
 
-      - name: 🧱 Сборка образа для Rockchip RK3588
+      - name: 🧱 Сборка образа (ophub packaging)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone --depth 1 https://github.com/ophub/kernel.git kernel_source
           git clone --depth 1 https://github.com/ophub/amlogic-s9xxx-openwrt.git builder
+          cp -r openwrt-armvirt builder/
           cd builder
-          
-          mkdir -p openwrt-armvirt
-          cp -f "../${{ steps.get_rootfs.outputs.file }}" openwrt-armvirt/openwrt-armvirt-64-default-rootfs.tar.gz
-          
           sudo chmod +x make
-          sudo ./make -b "${{ inputs.openwrt_board }}" -k "${{ inputs.openwrt_kernel }}" -s stable -a true -d
+          sudo ./make -b "${{ inputs.openwrt_board }}" -k "${{ inputs.openwrt_kernel }}" -s stable -a true
           
           mkdir -p ../output
           sudo cp -r out/* ../output/ || true
