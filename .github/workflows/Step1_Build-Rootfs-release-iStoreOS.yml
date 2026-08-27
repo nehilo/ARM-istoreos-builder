@@ -121,7 +121,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         BUILD_VER="${{ inputs.build_version }}"
-        REPO="${{ github.repository }}"
+        REPO="Arthur97172/ARM-istoreos-builder"
         TAG="iStoreOS-Imagebuilder"
         TARGET_SUFFIX="istoreos-imagebuilder-armsr-armv8.Linux-x86_64.tar.zst"
 
