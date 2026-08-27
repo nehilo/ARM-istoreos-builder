@@ -301,14 +301,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: ⏬ 下载 rootfs.tar.gz
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "📦 正在下载预构建 rootfs"
-          mkdir -p bin/targets/armsr/armv8
-          gh release download --repo "${{ github.repository }}" --pattern "*rootfs.tar.gz" --dir bin/targets/armsr/armv8
           
       - name: ⬇️ 下载 rootfs.tar.gz
         run: |
