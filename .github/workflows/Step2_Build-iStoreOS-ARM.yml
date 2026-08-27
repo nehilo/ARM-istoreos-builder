@@ -91,7 +91,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
 
     permissions:
       contents: write
@@ -100,18 +100,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: 🛠️ Подготовка окружения и утилит сборки
+        run: |
+          sudo timedatectl set-timezone "Asia/Shanghai"
+          sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /usr/local/lib/android /opt/ghc
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            dosfstools gzip jq libconfuse-dev libfaketime libfuse-dev libncurses-dev \
+            pigz pv u-boot-tools uuid-runtime zstd fdisk btrfs-progs e2fsprogs parted
+
       - name: ⬇️ Скачивание rootfs.tar.gz
         id: get_rootfs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p bin/targets/armsr/armv8
-          echo "Поиск последнего релиза из Step 1..."
+          echo "Поиск и скачивание rootfs из последнего релиза..."
           gh release download --repo "${{ github.repository }}" --pattern "*rootfs*.tar.gz" --dir bin/targets/armsr/armv8 --clobber
           
           ROOTFS_PATH=$(find bin/targets/armsr/armv8 -type f -name "*rootfs*.tar.gz" | head -n 1)
           if [ -z "$ROOTFS_PATH" ]; then
-            echo "❌ Файл rootfs не найден в релизах! Убедитесь, что Step 1 успешно завершился."
+            echo "❌ Файл rootfs не найден в релизах! Убедитесь, что Step 1 был успешно выполнен."
             exit 1
           fi
           echo "Найден rootfs: $ROOTFS_PATH"
@@ -126,22 +135,24 @@ jobs:
           auto_kernel: ${{ inputs.auto_kernel }}
           kernel_repo: ophub/kernel
           kernel_usage: stable
-          builder_name: kwonelee
+          builder_name: ophub
 
       - name: 📜 调整.img.gz 文件名
         id: rename
         run: |
-          for FILE in ${{ env.PACKAGED_OUTPUTPATH }}/*.img.gz; do
-            if [ -f "$FILE" ]; then
-              echo "Processing file: $FILE"
-              FILENAME=$(basename "$FILE")
-              NEW_FILENAME=$(echo "$FILENAME" | sed 's/openwrt/iStoreOS_${{ env.VERSION }}-Docker-${{ env.DOCKER }}/g')
-              if [ "$FILENAME" != "$NEW_FILENAME" ]; then
-                mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/$NEW_FILENAME"
-                echo "Renamed $FILENAME to $NEW_FILENAME"
+          if [ -d "${{ env.PACKAGED_OUTPUTPATH }}" ]; then
+            for FILE in ${{ env.PACKAGED_OUTPUTPATH }}/*.img.gz; do
+              if [ -f "$FILE" ]; then
+                echo "Processing file: $FILE"
+                FILENAME=$(basename "$FILE")
+                NEW_FILENAME=$(echo "$FILENAME" | sed 's/openwrt/iStoreOS_${{ env.VERSION }}-Docker-${{ env.DOCKER }}/g')
+                if [ "$FILENAME" != "$NEW_FILENAME" ]; then
+                  mv "$FILE" "${{ env.PACKAGED_OUTPUTPATH }}/$NEW_FILENAME"
+                  echo "Renamed $FILENAME to $NEW_FILENAME"
+                fi
               fi
-            fi
-          done
+            done
+          fi
 
       - name: 📅 获取当前日期
         id: date
