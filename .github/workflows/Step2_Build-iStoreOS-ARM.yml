@@ -58,7 +58,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     permissions:
       contents: write
@@ -67,7 +67,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🛠️ Подготовка окружения
+      - name: 🛠️ Подготовка окружения и патч совместимости cp
         run: |
           sudo timedatectl set-timezone "Asia/Shanghai"
           sudo modprobe loop || true
@@ -76,6 +76,22 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             dosfstools gzip jq libconfuse-dev libfaketime libfuse-dev libncurses-dev \
             pigz pv u-boot-tools uuid-runtime zstd fdisk btrfs-progs e2fsprogs parted curl git bc wget tar
+          
+          # Обертка-патч для команды cp для совместимости со старыми скриптами ophub
+          sudo mv /bin/cp /bin/cp.orig
+          sudo tee /bin/cp << 'EOF' > /dev/null
+          #!/bin/bash
+          ARGS=()
+          for arg in "$@"; do
+            if [[ "$arg" == --update=* ]]; then
+              ARGS+=("-u")
+            else
+              ARGS+=("$arg")
+            fi
+          done
+          exec /bin/cp.orig "${ARGS[@]}"
+          EOF
+          sudo chmod +x /bin/cp
 
       - name: ⬇️ Скачивание rootfs
         id: rootfs_step
