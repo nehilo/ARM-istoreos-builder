@@ -58,7 +58,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
 
     permissions:
       contents: write
@@ -91,9 +91,7 @@ jobs:
             exit 1
           fi
           
-          # Переименовываем в корень рабочего каталога
           cp -f "$FOUND_FILE" openwrt-armvirt-64-default-rootfs.tar.gz
-          echo "Файл подготовлен: openwrt-armvirt-64-default-rootfs.tar.gz"
           echo "filepath=openwrt-armvirt-64-default-rootfs.tar.gz" >> $GITHUB_OUTPUT
 
       - name: 🧱 Сборка образа прошивки
@@ -106,7 +104,7 @@ jobs:
           kernel_repo: ophub/kernel
           kernel_usage: stable
 
-      - name: 📜 Формирование имен файлов
+      - name: 📜 Корректировка имен файлов
         run: |
           if [ -n "$PACKAGED_OUTPUTPATH" ] && [ -d "$PACKAGED_OUTPUTPATH" ]; then
             cd "$PACKAGED_OUTPUTPATH"
