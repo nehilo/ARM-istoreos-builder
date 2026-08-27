@@ -67,7 +67,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🛠️ Подготовка системы и дисковых устройств
+      - name: 🛠️ Подготовка системы
         run: |
           sudo timedatectl set-timezone "Asia/Shanghai"
           sudo modprobe loop || true
@@ -75,35 +75,34 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             dosfstools gzip jq libconfuse-dev libfaketime libfuse-dev libncurses-dev \
-            pigz pv u-boot-tools uuid-runtime zstd fdisk btrfs-progs e2fsprogs parted curl git bc
+            pigz pv u-boot-tools uuid-runtime zstd fdisk btrfs-progs e2fsprogs parted curl git bc wget
 
-      - name: ⬇️ Скачивание и подготовка rootfs
+      - name: ⬇️ Скачивание rootfs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p bin/targets/armsr/armv8
-          gh release download --repo "${{ github.repository }}" --pattern "*rootfs*.tar.gz" --dir bin/targets/armsr/armv8 --clobber
+          mkdir -p openwrt/openwrt-armvirt
+          gh release download --repo "${{ github.repository }}" --pattern "*rootfs*.tar.gz" --dir openwrt/openwrt-armvirt --clobber
           
-          FOUND_FILE=$(find bin/targets/armsr/armv8 -type f -name "*rootfs*.tar.gz" | head -n 1)
+          FOUND_FILE=$(find openwrt/openwrt-armvirt -type f -name "*rootfs*.tar.gz" | head -n 1)
           if [ -z "$FOUND_FILE" ]; then
             echo "❌ Rootfs архив не найден в релизах!"
             exit 1
           fi
           
-          echo "Копирование $FOUND_FILE в стандартное имя для упаковщика..."
-          cp -f "$FOUND_FILE" bin/targets/armsr/armv8/openwrt-armvirt-64-default-rootfs.tar.gz
-          ls -la bin/targets/armsr/armv8/
+          cp -f "$FOUND_FILE" openwrt/openwrt-armvirt/openwrt-armvirt-64-default-rootfs.tar.gz
+          ls -la openwrt/openwrt-armvirt/
 
       - name: 🧱 Сборка образа прошивки (ophub)
         uses: ophub/amlogic-s9xxx-openwrt@main
         with:
-          openwrt_path: bin/targets/armsr/armv8
+          openwrt_path: openwrt/openwrt-armvirt
           openwrt_board: ${{ inputs.openwrt_board }}
           openwrt_kernel: ${{ inputs.openwrt_kernel }}
           auto_kernel: true
           kernel_repo: ophub/kernel
           kernel_usage: stable
-          builder_name: ophub
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 📜 Корректировка имен файлов
         run: |
