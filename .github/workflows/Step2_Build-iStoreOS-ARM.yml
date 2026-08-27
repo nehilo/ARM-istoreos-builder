@@ -19,11 +19,6 @@ on:
           - nanopc-t6
           - nanopi-r5s
           - nanopi-r5c
-      openwrt_kernel:
-        description: "请选择内核版本"
-        required: true
-        default: "6.1.75"
-        type: string
       luci_version:
         description: "选择luci版本"
         required: true
@@ -66,10 +61,11 @@ jobs:
       - name: 🛠️ Подготовка окружения
         run: |
           sudo timedatectl set-timezone "Asia/Shanghai"
+          sudo modprobe loop || true
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             dosfstools gzip jq libconfuse-dev libfaketime libfuse-dev libncurses-dev \
-            pigz pv u-boot-tools uuid-runtime zstd fdisk btrfs-progs e2fsprogs parted curl git
+            pigz pv u-boot-tools uuid-runtime zstd fdisk btrfs-progs e2fsprogs parted curl git bc
 
       - name: ⬇️ Скачивание rootfs
         id: get_rootfs
@@ -87,7 +83,7 @@ jobs:
           echo "Найден rootfs: $ROOTFS_PATH"
           echo "file=$ROOTFS_PATH" >> $GITHUB_OUTPUT
 
-      - name: 🧱 Сборка образа прошивки (ophub flipscript)
+      - name: 🧱 Сборка образа прошивки (ophub)
         run: |
           git clone --depth 1 https://github.com/ophub/amlogic-s9xxx-openwrt.git packaging
           cd packaging
@@ -96,7 +92,7 @@ jobs:
           cp "../${{ steps.get_rootfs.outputs.file }}" openwrt-armvirt/openwrt-armsr-armv8-generic-rootfs.tar.gz
           
           sudo chmod +x make
-          sudo ./make -d -b "${{ inputs.openwrt_board }}" -k "${{ inputs.openwrt_kernel }}"
+          sudo ./make -d -b "${{ inputs.openwrt_board }}" -a true
           
           mkdir -p ../output
           sudo cp -r out/* ../output/ || true
