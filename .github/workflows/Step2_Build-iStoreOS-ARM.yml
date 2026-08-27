@@ -67,7 +67,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🛠️ Подготовка системы
+      - name: 🛠️ Подготовка окружения
         run: |
           sudo timedatectl set-timezone "Asia/Shanghai"
           sudo modprobe loop || true
@@ -96,13 +96,16 @@ jobs:
       - name: 🧱 Сборка образа прошивки (ophub)
         uses: ophub/amlogic-s9xxx-openwrt@main
         with:
+          mode: "rockchip"
           openwrt_path: openwrt/openwrt-armvirt
           openwrt_board: ${{ inputs.openwrt_board }}
           openwrt_kernel: ${{ inputs.openwrt_kernel }}
           auto_kernel: true
           kernel_repo: ophub/kernel
           kernel_usage: stable
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 📜 Корректировка имен файлов
         run: |
